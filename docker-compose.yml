@@ -1,0 +1,63 @@
+version: '2.1'
+
+volumes:
+  postgres-data:
+    driver: local
+  example-gems:
+    driver: local
+
+services:
+
+  postgres:
+    image: postgres:9.6.1-alpine
+    ports:
+      # We'll bind our host's port specified on the .env file (defaulting to 5432) to postgres's
+      # container port 5432, so we can use our database IDEs with it:
+      - ${POSTGRES_PORT:-5432}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data # Mount the postgres data volume
+    environment:
+      POSTGRES_PASSWORD: 3x4mpl3
+
+  web:
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    image: vovimayhem/activerecord-from-example:development
+    entrypoint: /usr/src/app/bin/entrypoint-dev
+    volumes:
+      # Mount our app code directory (".") into our app containers at the "/usr/src/app" folder:
+      - .:/usr/src/app
+
+      # Mount the 'gems' volume on the folder that stores bundled gems installed after a prev build:
+      - example-gems:/usr/local/bundle
+
+    # Keep the stdin open, so we can attach to our app container's process
+    # and do things such as byebug, etc:
+    stdin_open: true
+
+    # Enable sending signals (CTRL+C, CTRL+P + CTRL+Q) into the container:
+    tty: true
+
+    command: rails server -b 0.0.0.0
+
+    ports:
+      - ${RAILS_WEB_PORT:-3000}:3000
+    # Link to our postgres and redis containers, so they can be visible from our
+    # app containers:
+    links:
+      # We'll include a link to the 'db' (postgres) container, making it visible from the container
+      # using the 'db' hostname:
+      - postgres:db
+    environment:
+      # We'll set the DATABASE_URL environment variable for the app to connect to our postgres
+      # container, which will be used by the 'config/database.yml' file:
+      DATABASE_URL: postgres://postgres:3x4mpl3@db:5432/activerecord_from_example_development
+
+      # We'll set the RAILS_ENV and RACK_ENV environment variables to
+      # 'development', so our app containers will start in 'development' mode
+      # on this compose project:
+      RAILS_ENV: development
+      RACK_ENV: development
+
+      RAILS_LOG_TO_STDOUT: "true"
