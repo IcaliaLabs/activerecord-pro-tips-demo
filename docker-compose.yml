@@ -61,3 +61,13 @@ services:
       RACK_ENV: development
 
       RAILS_LOG_TO_STDOUT: "true"
+
+  web_benchmark:
+    <<: *app
+    command: puma -t 2:25 -w 2 -p 3000 -e production
+    ports: [ "3001:3000" ]
+    environment:
+      <<: *app_env
+      RAILS_ENV: production
+      RACK_ENV: production
+      SECRET_KEY_BASE: 947b7f19b9e817e30c4c615810396183e880f9f78c4fb35b182a74fa47331ed255a13804d08377bb7550a0dcde1b067b55e73a6f688226c9116a8328ea4db6db
