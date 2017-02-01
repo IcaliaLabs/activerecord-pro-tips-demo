@@ -42,7 +42,15 @@ RUN set -ex \
   && apt-get remove --purge -y xz-utils \
   && rm -rf /var/lib/apt/lists/*
 
-# 7: Install the current project gems - they can be safely changed later during development via
+# 7: Install postgres client tools - needed to dump the database schema in SQL format:
+RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8 \
+ && export PG_MAJOR=9.6 \
+ && echo 'deb http://apt.postgresql.org/pub/repos/apt/ jessie-pgdg main' $PG_MAJOR > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-$PG_MAJOR \
+ && rm -rf /var/lib/apt/lists/*
+
+# 8: Install the current project gems - they can be safely changed later during development via
 # `bundle install` or `bundle update`:
 ADD Gemfile* /usr/src/app/
 RUN set -ex && bundle install
