@@ -31,6 +31,9 @@ gem 'ffaker', '~> 2.4'
 # Custom tasks with Thor over Rails:
 gem 'thor-rails', '~> 0.0.1'
 
+# Use slim instead of erb for view templates:
+gem 'slim-rails', '~> 3.1', '>= 3.1.1'
+
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'byebug', platform: :mri
