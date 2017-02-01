@@ -19,11 +19,11 @@ services:
     environment:
       POSTGRES_PASSWORD: 3x4mpl3
 
-  web:
+  web: &app
     build:
       context: .
       dockerfile: dev.Dockerfile
-    image: vovimayhem/activerecord-from-example:development
+    image: vovimayhem/activerecord-pro-tips-demo:development
     entrypoint: /usr/src/app/bin/entrypoint-dev
     volumes:
       # Mount our app code directory (".") into our app containers at the "/usr/src/app" folder:
@@ -49,10 +49,10 @@ services:
       # We'll include a link to the 'db' (postgres) container, making it visible from the container
       # using the 'db' hostname:
       - postgres:db
-    environment:
+    environment: &app_env
       # We'll set the DATABASE_URL environment variable for the app to connect to our postgres
       # container, which will be used by the 'config/database.yml' file:
-      DATABASE_URL: postgres://postgres:3x4mpl3@db:5432/activerecord_from_example_development
+      DATABASE_URL: postgres://postgres:3x4mpl3@db:5432/activerecord_pro_tips_demo
 
       # We'll set the RAILS_ENV and RACK_ENV environment variables to
       # 'development', so our app containers will start in 'development' mode
