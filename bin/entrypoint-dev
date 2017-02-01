@@ -23,7 +23,7 @@ if [ -z "$1" ]; then set -- rails server -p 3000 -b 0.0.0.0 "$@"; fi
 
 # 4: Check if the issued command requires a setup (gems to be already installed, database created,
 # etc):
-if [[ "$1" = "rails" ]]
+if [[ "$1" = "rails" || "$1" = "thor" ]]
 then
   # 5: Wait until the setup 'lock' file no longer exists:
   while [ -f $APP_SETUP_LOCK ]; do wait_setup; done
