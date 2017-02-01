@@ -19,11 +19,17 @@ gem 'sass-rails', '~> 5.0'
 gem 'uglifier', '>= 1.3.0'
 # Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder
 gem 'jbuilder', '~> 2.5'
-# Use ActiveModel has_secure_password
-# gem 'bcrypt', '~> 3.1.7'
 
-# Use Capistrano for deployment
-# gem 'capistrano-rails', group: :development
+# The orders state transitions are managed via statesman:
+gem 'statesman', '~> 2.0', '>= 2.0.1'
+gem 'statesman-events', '~> 0.0.1'
+
+# "ffaker" is used to generate dummy data... You'll usually find it inside the development/test
+# group, but this demo requires it to be in the general group:
+gem 'ffaker', '~> 2.4'
+
+# Custom tasks with Thor over Rails:
+gem 'thor-rails', '~> 0.0.1'
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
