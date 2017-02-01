@@ -1,0 +1,19 @@
+section.items
+  table.items
+    thead
+      tr.item
+        th.id ID
+        th.product Product
+        th.category Category
+        th.shelf Shelf
+        th.rank Position from bottom
+        th.properties Properties
+    tbody
+      - @items.each do |item|
+        tr.item
+          td.id = item.id
+          td.product = item.product.name
+          td.category = item.category.name
+          td.shelf = item.shelf.name
+          th.rank = item.shelf_rank
+          td.properties Properties
