@@ -3,14 +3,19 @@ class CreateInventoryStructures < ActiveRecord::Migration[5.0]
     create_table :shelves, comment: 'Where stuff is placed into' do |t|
       t.string   :name,
                  null: false,
-                 comment: 'A name used to identify phisically the shelf'
+                 index: { name: :UK_shelf_name, unique: true },
+                 comment: 'A name used to physically identify the shelf'
 
-      t.boolean  :wharehouse,
+      t.boolean  :warehouse,
                  null: false,
                  default: true,
                  comment: 'Whether the shelf is in the warehouse or not'
       t.timestamps
     end
+
+    # Partial indexes on shelves:
+    add_index :shelves, :warehouse, name: :IX_warehouse_shelf, where: 'warehouse = TRUE'
+    add_index :shelves, :warehouse, name: :IX_counter_shelf, where: 'warehouse = FALSE'
 
     create_table :inbound_orders, comment: 'Registers any time stuff gets shipped into the store' do |t|
       t.text       :notes, comment: 'Notes about the incoming order'
@@ -20,7 +25,8 @@ class CreateInventoryStructures < ActiveRecord::Migration[5.0]
     create_table :inbound_order_transitions, comment: 'Inbound order state changes during the process' do |t|
       t.references :inbound_order,
                    null: false,
-                   foreign_key: true,
+                   index: { name: :IX_transition_inbound_order },
+                   foreign_key: { name: :FK_transition_inbound_order },
                    comment: 'The inbound process that changed state'
 
       t.string     :to_state,
@@ -62,17 +68,20 @@ class CreateInventoryStructures < ActiveRecord::Migration[5.0]
     create_table :inbound_logs, comment: 'Details about what and how many stuff got stored into which shelf' do |t|
       t.references :inbound_order,
                    null: false,
-                   foreign_key: true,
+                   index: { name: :IX_inbound_log_order },
+                   foreign_key: { name: :FK_inbound_log_order },
                    comment: 'The inbound process that stored the incoming stuff'
 
       t.references :product,
                    null: false,
-                   foreign_key: true,
+                   index: { name: :IX_inbound_log_product },
+                   foreign_key: { name: :FK_inbound_log_product },
                    comment: 'The kind of stuff that got stored'
 
       t.references :shelf,
                    null: false,
-                   foreign_key: true,
+                   index: { name: :IX_inbound_log_shelf },
+                   foreign_key: { name: :FK_inbound_log_shelf },
                    comment: 'The shelf in which the stuff got stored'
 
       t.jsonb      :properties,
@@ -91,16 +100,19 @@ class CreateInventoryStructures < ActiveRecord::Migration[5.0]
     create_table :items, comment: 'All items that are or have been on inventory' do |t|
       t.references :inbound_log,
                    null: false,
+                   index: { name: :IX_item_inbound_log },
                    foreign_key: { name: :FK_item_inbound_log },
                    comment: 'Reference to the inbound log that entered this item into inventory'
 
       t.references :product,
                    null: false,
+                   index: { name: :IX_item_product },
                    foreign_key: { name: :FK_item_product },
                    comment: 'Reference to the product this item belongs to'
 
       t.references :shelf,
                    null: true,
+                   index: { name: :IX_item_shelf },
                    foreign_key: { name: :FK_item_shelf },
                    comment: 'Reference to the shelf this item is currently placed into'
 
@@ -108,9 +120,28 @@ class CreateInventoryStructures < ActiveRecord::Migration[5.0]
                    null: true,
                    comment: 'Order in which this item is currently placed inside the shelf'
 
-      t.jsonb :properties, null: false, default: {}, comment: 'The current attributes for this item'
+      t.jsonb      :properties,
+                   null: false,
+                   default: {},
+                   comment: 'The current attributes for this item'
+
+      t.boolean    :currently_available,
+                   null: false,
+                   default: true,
+                   comment: 'Whether the item is currently present in our inventory or not'
 
       t.timestamps
     end
+
+    # Partial indexes on items:
+    add_index :items,
+              :currently_available,
+              name: :IX_available_item,
+              where: 'currently_available = TRUE'
+
+    add_index :items,
+              :currently_available,
+              name: :IX_sold_item,
+              where: 'currently_available = FALSE'
   end
 end
