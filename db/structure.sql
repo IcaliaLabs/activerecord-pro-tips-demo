@@ -38,7 +38,7 @@ CREATE TABLE ar_internal_metadata (
 
 CREATE TABLE categories (
     id integer NOT NULL,
-    name character varying,
+    name character varying NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL
 );
@@ -279,6 +279,7 @@ CREATE TABLE items (
     shelf_id integer,
     shelf_rank integer,
     properties jsonb DEFAULT '{}'::jsonb NOT NULL,
+    currently_available boolean DEFAULT true NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL
 );
@@ -327,6 +328,13 @@ COMMENT ON COLUMN items.properties IS 'The current attributes for this item';
 
 
 --
+-- Name: COLUMN items.currently_available; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN items.currently_available IS 'Whether the item is currently present in our inventory or not';
+
+
+--
 -- Name: items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -351,9 +359,9 @@ ALTER SEQUENCE items_id_seq OWNED BY items.id;
 
 CREATE TABLE products (
     id integer NOT NULL,
-    category_id integer,
-    name character varying,
-    brand character varying,
+    category_id integer NOT NULL,
+    name character varying NOT NULL,
+    brand character varying NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL
 );
@@ -394,7 +402,7 @@ CREATE TABLE schema_migrations (
 CREATE TABLE shelves (
     id integer NOT NULL,
     name character varying NOT NULL,
-    wharehouse boolean DEFAULT true NOT NULL,
+    warehouse boolean DEFAULT true NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL
 );
@@ -411,14 +419,14 @@ COMMENT ON TABLE shelves IS 'Where stuff is placed into';
 -- Name: COLUMN shelves.name; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN shelves.name IS 'A name used to identify phisically the shelf';
+COMMENT ON COLUMN shelves.name IS 'A name used to physically identify the shelf';
 
 
 --
--- Name: COLUMN shelves.wharehouse; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN shelves.warehouse; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN shelves.wharehouse IS 'Whether the shelf is in the warehouse or not';
+COMMENT ON COLUMN shelves.warehouse IS 'Whether the shelf is in the warehouse or not';
 
 
 --
@@ -562,6 +570,41 @@ ALTER TABLE ONLY shelves
 
 
 --
+-- Name: IX_available_item; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_available_item" ON items USING btree (currently_available) WHERE (currently_available = true);
+
+
+--
+-- Name: IX_counter_shelf; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_counter_shelf" ON shelves USING btree (warehouse) WHERE (warehouse = false);
+
+
+--
+-- Name: IX_inbound_log_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_inbound_log_order" ON inbound_logs USING btree (inbound_order_id);
+
+
+--
+-- Name: IX_inbound_log_product; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_inbound_log_product" ON inbound_logs USING btree (product_id);
+
+
+--
+-- Name: IX_inbound_log_shelf; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_inbound_log_shelf" ON inbound_logs USING btree (shelf_id);
+
+
+--
 -- Name: IX_inbound_order_most_recent_transition; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -590,59 +633,111 @@ COMMENT ON INDEX "IX_inbound_order_transition_sort" IS 'An index holding the ord
 
 
 --
--- Name: index_inbound_logs_on_inbound_order_id; Type: INDEX; Schema: public; Owner: -
+-- Name: IX_item_inbound_log; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_inbound_logs_on_inbound_order_id ON inbound_logs USING btree (inbound_order_id);
-
-
---
--- Name: index_inbound_logs_on_product_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_inbound_logs_on_product_id ON inbound_logs USING btree (product_id);
+CREATE INDEX "IX_item_inbound_log" ON items USING btree (inbound_log_id);
 
 
 --
--- Name: index_inbound_logs_on_shelf_id; Type: INDEX; Schema: public; Owner: -
+-- Name: IX_item_product; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_inbound_logs_on_shelf_id ON inbound_logs USING btree (shelf_id);
-
-
---
--- Name: index_inbound_order_transitions_on_inbound_order_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_inbound_order_transitions_on_inbound_order_id ON inbound_order_transitions USING btree (inbound_order_id);
+CREATE INDEX "IX_item_product" ON items USING btree (product_id);
 
 
 --
--- Name: index_items_on_inbound_log_id; Type: INDEX; Schema: public; Owner: -
+-- Name: IX_item_shelf; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_items_on_inbound_log_id ON items USING btree (inbound_log_id);
-
-
---
--- Name: index_items_on_product_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_items_on_product_id ON items USING btree (product_id);
+CREATE INDEX "IX_item_shelf" ON items USING btree (shelf_id);
 
 
 --
--- Name: index_items_on_shelf_id; Type: INDEX; Schema: public; Owner: -
+-- Name: IX_product_brand; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_items_on_shelf_id ON items USING btree (shelf_id);
+CREATE INDEX "IX_product_brand" ON products USING btree (brand);
 
 
 --
--- Name: index_products_on_category_id; Type: INDEX; Schema: public; Owner: -
+-- Name: IX_product_category; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_products_on_category_id ON products USING btree (category_id);
+CREATE INDEX "IX_product_category" ON products USING btree (category_id);
+
+
+--
+-- Name: IX_product_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_product_name" ON products USING btree (name);
+
+
+--
+-- Name: IX_sold_item; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_sold_item" ON items USING btree (currently_available) WHERE (currently_available = false);
+
+
+--
+-- Name: IX_transition_inbound_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_transition_inbound_order" ON inbound_order_transitions USING btree (inbound_order_id);
+
+
+--
+-- Name: IX_warehouse_shelf; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_warehouse_shelf" ON shelves USING btree (warehouse) WHERE (warehouse = true);
+
+
+--
+-- Name: UK_brand_product_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "UK_brand_product_name" ON products USING btree (name, brand);
+
+
+--
+-- Name: UK_category_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "UK_category_name" ON categories USING btree (name);
+
+
+--
+-- Name: UK_shelf_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "UK_shelf_name" ON shelves USING btree (name);
+
+
+--
+-- Name: inbound_logs FK_inbound_log_order; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY inbound_logs
+    ADD CONSTRAINT "FK_inbound_log_order" FOREIGN KEY (inbound_order_id) REFERENCES inbound_orders(id);
+
+
+--
+-- Name: inbound_logs FK_inbound_log_product; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY inbound_logs
+    ADD CONSTRAINT "FK_inbound_log_product" FOREIGN KEY (product_id) REFERENCES products(id);
+
+
+--
+-- Name: inbound_logs FK_inbound_log_shelf; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY inbound_logs
+    ADD CONSTRAINT "FK_inbound_log_shelf" FOREIGN KEY (shelf_id) REFERENCES shelves(id);
 
 
 --
@@ -670,43 +765,19 @@ ALTER TABLE ONLY items
 
 
 --
--- Name: inbound_logs fk_rails_04ddb91cd5; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY inbound_logs
-    ADD CONSTRAINT fk_rails_04ddb91cd5 FOREIGN KEY (inbound_order_id) REFERENCES inbound_orders(id);
-
-
---
--- Name: inbound_logs fk_rails_441ddf26ab; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY inbound_logs
-    ADD CONSTRAINT fk_rails_441ddf26ab FOREIGN KEY (product_id) REFERENCES products(id);
-
-
---
--- Name: inbound_logs fk_rails_5f0941df6b; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY inbound_logs
-    ADD CONSTRAINT fk_rails_5f0941df6b FOREIGN KEY (shelf_id) REFERENCES shelves(id);
-
-
---
--- Name: inbound_order_transitions fk_rails_6a02e2e313; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY inbound_order_transitions
-    ADD CONSTRAINT fk_rails_6a02e2e313 FOREIGN KEY (inbound_order_id) REFERENCES inbound_orders(id);
-
-
---
--- Name: products fk_rails_fb915499a4; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: products FK_product_category; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY products
-    ADD CONSTRAINT fk_rails_fb915499a4 FOREIGN KEY (category_id) REFERENCES categories(id);
+    ADD CONSTRAINT "FK_product_category" FOREIGN KEY (category_id) REFERENCES categories(id);
+
+
+--
+-- Name: inbound_order_transitions FK_transition_inbound_order; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY inbound_order_transitions
+    ADD CONSTRAINT "FK_transition_inbound_order" FOREIGN KEY (inbound_order_id) REFERENCES inbound_orders(id);
 
 
 --

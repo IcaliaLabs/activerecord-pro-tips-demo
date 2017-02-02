@@ -1,40 +1,134 @@
 module ItemFiltering
   def item_filter_params
-    @item_filter_params ||= params.permit :id, :category_id, :category_name,
-                                          :product_id, :product_name
+    @item_filter_params ||= params.permit :id,
+                                          :category_id,   :category_id_sort,
+                                          :category_name, :category_name_sort,
+                                          :product_id,    :product_id_sort,
+                                          :product_name,  :product_name_sort
   end
 
   def filter_by_category?
-    (params.keys & %w(category_id category_name)).any?
+    filter_by? :category, :id, :name
+  end
+
+  def sort_by_category?
+    sort_by? :category, :id, :name
   end
 
   def category_scope
-    conditions = item_filter_params.slice(:category_id, :category_name).transform_keys do |key|
-      next $1.to_sym if key.to_s =~ /\Acategory_(\w+)\z/i
-      key
-    end
-    Category.where conditions.to_unsafe_h
+    Category.where conditions_from_params(:category, :id, :name)
   end
 
-  def filter_by_category(scope)
-    return scope unless filter_by_category?
-    scope.joins(:category).merge category_scope
+  def filter_and_sort_by_category(scope)
+    return scope unless filter_by_category? || sort_by_category?
+    scope = filter_by_category scope.joins(:category)
+    sort_by_category scope
   end
 
   def filter_by_product?
     (params.keys & [:product_id, :product_name]).any?
   end
 
+  def sort_by_product?
+    sort_by? :product, :id, :name
+  end
+
   def product_scope
-    conditions = item_filter_params.slice(:product_id, :product_name).transform_keys do |key|
-      next $1.to_sym if key.to_s =~ /\Aproduct_(\w+)\z/i
-      key
-    end
-    Product.where conditions.to_unsafe_h
+    Product.where conditions_from_params(:product, :id, :name)
+  end
+
+  def filter_and_sort_by_product(scope)
+    return scope unless filter_by_product?
+    scope = filter_by_product scope.joins(:product)
+    sort_by_product scope
+  end
+
+  def filter_by_shelf?
+    filter_by? :shelf, :id, :name
+  end
+
+  def sort_by_shelf?
+    sort_by? :shelf, :id, :name
+  end
+
+  def shelf_scope
+    Shelf.where conditions_from_params(:shelf, :id, :name)
+  end
+
+  def filter_and_sort_by_shelf(scope)
+    return scope unless filter_by_shelf? || sort_by_shelf?
+    scope = filter_by_shelf scope.joins(:shelf)
+    sort_by_shelf scope
+  end
+
+  private
+
+  def filter_by_category(scope)
+    return scope unless filter_by_category?
+    scope.merge(category_scope)
+  end
+
+  def sort_by_category(scope)
+    return scope unless sort_by_category?
+    scope.order sort_conditions_from_params(:category, :id, :name)
   end
 
   def filter_by_product(scope)
     return scope unless filter_by_product?
-    scope.joins(:product).merge product_scope
+    scope.merge(product_scope)
+  end
+
+  def sort_by_product(scope)
+    return scope unless sort_by_product?
+    scope.order sort_conditions_from_params(:product, :id, :name)
+  end
+
+  def filter_by_shelf(scope)
+    return scope unless filter_by_shelf?
+    scope.merge(shelf_scope)
+  end
+
+  def sort_by_shelf(scope)
+    return scope unless sort_by_shelf?
+    scope.order sort_conditions_from_params(:shelf, :id, :name)
+  end
+
+  def sort_by?(assoc_name, *assoc_attrs)
+    sort_keys(assoc_name, assoc_attrs).reduce(false) do |must_sort, sort_key|
+      must_sort || params.key?(sort_key) && params[sort_key].in?(%(asc desc))
+    end
+  end
+
+  def sort_keys(assoc_name, assoc_attrs)
+    assoc_attrs.map { |attr_name| "#{assoc_name}_#{attr_name}_sort".to_sym }
+  end
+
+  def filter_by?(assoc_name, *assoc_attrs)
+    (params.keys & filter_keys(assoc_name, assoc_attrs)).any?
+  end
+
+  def filter_keys(assoc_name, assoc_attrs)
+    assoc_attrs.map { |attr_name| "#{assoc_name}_#{attr_name}".to_sym }
+  end
+
+  def conditions_from_params(assoc_name, *assoc_attrs)
+    key_pattern = Regexp.new "\\A#{assoc_name}_(\\w+)\\z"
+    item_filter_params.slice(*filter_keys(assoc_name, assoc_attrs)).transform_keys do |key|
+      next $1.to_sym if key.to_s =~ key_pattern
+      key
+    end.to_unsafe_h
+  end
+
+  def sort_conditions_from_params(assoc_name, *assoc_attrs)
+    associated_class = assoc_name.to_s.camelize.safe_constantize
+    return unless associated_class.present?
+    key_pattern = Regexp.new "\\A#{assoc_name}_(\\w+)_sort\\z"
+    item_filter_params.slice(*sort_keys(assoc_name, assoc_attrs)).transform_keys do |key|
+      next $1.to_sym if key.to_s =~ key_pattern
+      key
+    end.to_unsafe_h.map do |keyval|
+      column_name, column_order = keyval
+      associated_class.arel_table[column_name].send(column_order.to_sym)
+    end
   end
 end
