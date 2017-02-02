@@ -1,0 +1,25 @@
+section.pro-tip {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+
+  > header, > section.intro, > section.code-extract {
+    flex-grow: 0;
+    flex-shrink: 0;
+    display: block;
+    width: 100%;
+  }
+
+  > section.items, > section.rails-logger { width: 50%; }
+
+  > section.items > table.items {
+    font-size: smaller;
+    td:nth-child(1), th:nth-child(1) { width: 6ex; }
+    td:nth-child(2), th:nth-child(2) { width: 14em; }
+    td:nth-child(3), th:nth-child(3) { width: 8em; }
+    td:nth-child(4), th:nth-child(4) { width: 8em; }
+    td:nth-child(5), th:nth-child(5) { width: 8em; }
+    td:nth-child(6), th:nth-child(6) { width: 8em; }
+    > tbody { height: 20em; }
+  }
+}

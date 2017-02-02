@@ -7,7 +7,7 @@ class UsingFromExampleController < ApplicationController
   end
 
   def with_from
-    @items = Item.from(requested_scope(Item.all).limit(2000), :items).includes(:product, :category, :shelf)
+    @items = Item.from(requested_scope(Item.all), :items).limit(2000).includes(:product, :category, :shelf)
   end
 
   private

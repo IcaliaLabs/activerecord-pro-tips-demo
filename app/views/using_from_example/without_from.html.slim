@@ -1,7 +1,11 @@
-h1 Using `ActiveRecord::Base.from` Example
-
-p
-  span This is the example using the trick. Visit  
-  = link_to 'the version using the trick', using_from_example_with_from_path(item_filter_params)
-
-= render 'results_table'
+section.pro-tip
+  header
+    h1 Using `ActiveRecord::Base.from` Example
+  section.intro
+    p 
+      span This is the example using the trick. Visit  
+      = link_to 'the version using the trick', using_from_example_with_from_path(item_filter_params)
+  section.code-extract
+    pre Some code extract
+  = render 'results_table'
+  = render 'shared/logger_output'
