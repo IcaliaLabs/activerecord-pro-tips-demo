@@ -7,14 +7,14 @@ class UsingFromExampleController < ApplicationController
   end
 
   def with_from
-    @items = Item.from(requested_scope(Item.all), :items).limit(2000).includes(:product, :category, :shelf)
+    @items = Item.from(requested_scope(Item.all).limit(2000), :items)
+                 .includes(:product, :category, :shelf)
   end
 
   private
 
   def requested_scope(starting_scope)
-    scope = filter_by_category starting_scope
-    scope = filter_by_product scope
-    scope.order(Category.arel_table[:id].asc)
+    scoping_methods = [:filter_and_sort_by_product, :filter_and_sort_by_category]
+    scoping_methods.reduce(starting_scope) { |scope, scoping_method| send scoping_method, scope }
   end
 end
