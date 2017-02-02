@@ -1,3 +1,5 @@
+#= UsingFromExampleController
+# Controls the user interaction with the Pro Tip 1: Using `ActiveRecord::Base.from` screen
 class UsingFromExampleController < ApplicationController
   include ItemFiltering
   helper_method :item_filter_params

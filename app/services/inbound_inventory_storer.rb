@@ -1,3 +1,6 @@
+# = InboundInventoryStorer
+# Service that stores the inventory from an InboundOrder. Called during the order transition to
+# a 'completed' state.
 class InboundInventoryStorer
   attr_reader :order, :timestamp
 

@@ -1,3 +1,5 @@
+#= InboundOrderTransition
+# Represents a registered state change in an InboundOrder object.
 class InboundOrderTransition < ActiveRecord::Base
   belongs_to :inbound_order, inverse_of: :inbound_order_transitions
 

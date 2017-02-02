@@ -1,3 +1,5 @@
+#= ItemFiltering
+# A collection of methods used by controllers to filter and sort ActiveRecord::Relation collections
 module ItemFiltering
   def item_filter_params
     @item_filter_params ||= params.permit :id,
