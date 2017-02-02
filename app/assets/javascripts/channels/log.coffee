@@ -27,7 +27,7 @@ App.log = App.cable.subscriptions.create 'LogChannel',
   createSQLMessage: (data) ->
     console.log 'createSQLMessage'
     name = "<span class=\"name\">#{data.name}</span>"
-    duration = "<span class=\"duration\">#{data.duration}</span>"
+    duration = "<span class=\"duration\">#{data.duration.toFixed(2)}</span>"
     sql = "<span class=\"sql\">#{data.sql}</span>"
     "<li class=\"query\">#{name}#{duration}#{sql}</li>"
 

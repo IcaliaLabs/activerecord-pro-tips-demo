@@ -19,6 +19,13 @@
       margin-bottom: 1em;
       border-bottom: 1px dashed #333;
     }
+
+    > li.query {
+      > .name, .duration { margin-right: 1em; color: #31B8C7 }
+      > .duration:before { content: '('; }
+      > .duration:after { content: 'ms)'; }
+      > .sql { color: #5330B1 }
+    }
   }
 }
 
