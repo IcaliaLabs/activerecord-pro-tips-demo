@@ -72,14 +72,13 @@ class InboundInventoryStorer
   # Returns an Arel object with an projection of shelf ids and it's respective:
   # item count:
   def shelves_item_counts_projection
-    join_condition = logs_table[:shelf_id].eq items_table[:shelf_id]
+    logs_shelf_id = logs_table[:shelf_id]
+    join_condition = logs_shelf_id.eq items_table[:shelf_id]
     order_logs
       .join(items_table, Arel::Nodes::OuterJoin)
       .on(join_condition)
-      .group(logs_table[:shelf_id])
-      .project \
-        logs_table[:shelf_id],
-        items_table[Arel.star].count.as('"item_count"')
+      .group(logs_shelf_id)
+      .project logs_shelf_id, items_table[Arel.star].count.as('"item_count"')
   end
 
   # Crazy stuff:
@@ -113,17 +112,18 @@ class InboundInventoryStorer
       .as '"inbound_logs_as_line_items"'
 
     shelves_item_counts = shelves_item_counts_projection.as '"shelves_item_counts"'
-
+    line_item_inbound_log_id = inbound_logs_as_line_items[:inbound_log_id]
+    line_item_shelf_id = inbound_logs_as_line_items[:shelf_id]
     order_logs
       .join(inbound_logs_as_line_items)
-      .on(logs_table[:id].eq(inbound_logs_as_line_items[:inbound_log_id]))
+      .on(logs_table[:id].eq(line_item_inbound_log_id))
       .join(shelves_item_counts)
-      .on(inbound_logs_as_line_items[:shelf_id].eq(shelves_item_counts[:shelf_id]))
+      .on(line_item_shelf_id.eq(shelves_item_counts[:shelf_id]))
       .project \
-        inbound_logs_as_line_items[:inbound_log_id],
+        line_item_inbound_log_id,
         inbound_logs_as_line_items[:product_id],
         inbound_logs_as_line_items[:properties],
-        inbound_logs_as_line_items[:shelf_id],
+        line_item_shelf_id,
         inbounding_items_rank_in_shelf.as('"shelf_rank"'),
         timestamp_as_projection('created_at'),
         timestamp_as_projection('updated_at')

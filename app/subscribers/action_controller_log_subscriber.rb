@@ -9,8 +9,9 @@ class ActionControllerLogSubscriber < ActiveSupport::LogSubscriber
     additions = ActionController::Base.log_process_action(payload)
 
     status = payload[:status]
-    if status.nil? && payload[:exception].present?
-      status = Rack::Utils.status_code(ActionDispatch::ExceptionWrapper.new({}, payload[:exception]).status_code)
+    payload_exception = payload[:exception]
+    if status.nil? && payload_exception.present?
+      status = Rack::Utils.status_code(ActionDispatch::ExceptionWrapper.new({}, payload_exception).status_code)
     end
     message = "Completed #{status} #{Rack::Utils::HTTP_STATUS_CODES[status]} in %.0fms" % event.duration
     message << " (#{additions.join(" | ")})" unless additions.blank?
