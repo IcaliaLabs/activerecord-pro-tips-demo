@@ -11,17 +11,14 @@ class RandomCatalogGenerator
 
   def self.generate_products(quantity = nil)
     generate_categories unless Category.any?
-
-    # Fill a list of category ids we can randomly select while creating products:
-    category_ids = Category.pluck :id
+    category_count = Category.count
 
     # If no quantity was given, specify a random quantity between 5 and 20:
     quantity ||= SecureRandom.random_number(16) + 5
     quantity.times.each do
-      random_index = SecureRandom.random_number(category_ids.count - 1)
-      Product.create category_id: category_ids[random_index],
-                     name: FFaker::Product.product,
-                     brand: FFaker::Product.brand
+      Product.create! category_id: (SecureRandom.random_number(category_count) + 1),
+                      name: FFaker::Product.product,
+                      brand: FFaker::Product.brand
     end
   end
 end

@@ -84,17 +84,6 @@ class InboundInventoryStorer
   # Crazy stuff:
   def self.inbounding_items_rank_in_shelf
     shelves_item_counts = Arel::Table.new :shelves_item_counts
-    inbound_logs_as_line_items = Arel::Table.new :inbound_logs_as_line_items
-
-    # Generate the '(
-    #   PARTITION BY "inbound_logs_as_line_items"."shelf_id"
-    #   ORDER BY "inbound_logs_as_line_items"."inbound_log_id",
-    #            "inbound_logs_as_line_items"."log_item_sort_order"
-    # )' part:
-    partitioned_row_numbers = Arel::Nodes::Window.new
-    partitioned_row_numbers.partition inbound_logs_as_line_items[:shelf_id]
-    partitioned_row_numbers.order inbound_logs_as_line_items[:inbound_log_id],
-                                  inbound_logs_as_line_items[:log_item_sort_order]
 
     # Generate the 'row_number() OVER (PARTITION...)' part:
     ranking_order = Arel::Nodes::Over.new \
@@ -105,7 +94,21 @@ class InboundInventoryStorer
     Arel::Nodes::Addition.new ranking_order, shelves_item_counts[:item_count]
   end
 
-  delegate :inbounding_items_rank_in_shelf, to: :class
+  delegate :inbounding_items_rank_in_shelf, :partitioned_row_numbers, to: :class
+
+  # Generate the '(
+  #   PARTITION BY "inbound_logs_as_line_items"."shelf_id"
+  #   ORDER BY "inbound_logs_as_line_items"."inbound_log_id",
+  #            "inbound_logs_as_line_items"."log_item_sort_order"
+  # )' part:
+  def self.partitioned_row_numbers
+    inbound_logs_as_line_items = Arel::Table.new :inbound_logs_as_line_items
+    sql_window = Arel::Nodes::Window.new
+    sql_window.partition inbound_logs_as_line_items[:shelf_id]
+    sql_window.order inbound_logs_as_line_items[:inbound_log_id],
+                     inbound_logs_as_line_items[:log_item_sort_order]
+    sql_window
+  end
 
   def stored_items_projection
     inbound_logs_as_line_items = inbound_logs_as_line_items_projection

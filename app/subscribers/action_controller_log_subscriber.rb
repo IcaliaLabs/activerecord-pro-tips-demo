@@ -8,14 +8,24 @@ class ActionControllerLogSubscriber < ActiveSupport::LogSubscriber
     payload   = event.payload
     additions = ActionController::Base.log_process_action(payload)
 
-    status = payload[:status]
-    payload_exception = payload[:exception]
-    if status.nil? && payload_exception.present?
-      status = Rack::Utils.status_code(ActionDispatch::ExceptionWrapper.new({}, payload_exception).status_code)
-    end
-    message = "Completed #{status} #{Rack::Utils::HTTP_STATUS_CODES[status]} in %.0fms" % event.duration
-    message << " (#{additions.join(" | ")})" unless additions.blank?
+    message = generate_message event, payload, additions
 
     ActionCable.server.broadcast 'logger_output', type: 'controller', message: message
+  end
+
+  def self.generate_message(event, payload, additions)
+    status = get_payload_status payload
+    message = "Completed #{status} #{Rack::Utils::HTTP_STATUS_CODES[status]} in %.0fms" % event.duration
+    return message if additions.blank?
+    "#{message} (#{additions.join(" | ")})"
+  end
+
+  def self.get_payload_status(payload)
+    status = payload[:status]
+    return status if status.present?
+
+    payload_exception = payload[:exception]
+    return nil unless payload_exception.present?
+    Rack::Utils.status_code(ActionDispatch::ExceptionWrapper.new({}, payload_exception).status_code)
   end
 end
