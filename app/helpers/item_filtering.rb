@@ -96,26 +96,26 @@ module ItemFiltering
   end
 
   def sort_by?(assoc_name, *assoc_attrs)
-    sort_keys(assoc_name, assoc_attrs).reduce(false) do |must_sort, sort_key|
+    ItemFiltering.sort_keys(assoc_name, assoc_attrs).reduce(false) do |must_sort, sort_key|
       must_sort || params.key?(sort_key) && params[sort_key].in?(%(asc desc))
     end
   end
 
-  def sort_keys(assoc_name, assoc_attrs)
+  def self.sort_keys(assoc_name, assoc_attrs)
     assoc_attrs.map { |attr_name| "#{assoc_name}_#{attr_name}_sort".to_sym }
   end
 
   def filter_by?(assoc_name, *assoc_attrs)
-    (params.keys & filter_keys(assoc_name, assoc_attrs)).any?
+    (params.keys & ItemFiltering.filter_keys(assoc_name, assoc_attrs)).any?
   end
 
-  def filter_keys(assoc_name, assoc_attrs)
+  def self.filter_keys(assoc_name, assoc_attrs)
     assoc_attrs.map { |attr_name| "#{assoc_name}_#{attr_name}".to_sym }
   end
 
   def conditions_from_params(assoc_name, *assoc_attrs)
     key_pattern = Regexp.new "\\A#{assoc_name}_(\\w+)\\z"
-    item_filter_params.slice(*filter_keys(assoc_name, assoc_attrs)).transform_keys do |key|
+    item_filter_params.slice(*ItemFiltering.filter_keys(assoc_name, assoc_attrs)).transform_keys do |key|
       next $1.to_sym if key.to_s =~ key_pattern
       key
     end.to_unsafe_h
@@ -125,7 +125,7 @@ module ItemFiltering
     associated_class = assoc_name.to_s.camelize.safe_constantize
     return unless associated_class.present?
     key_pattern = Regexp.new "\\A#{assoc_name}_(\\w+)_sort\\z"
-    item_filter_params.slice(*sort_keys(assoc_name, assoc_attrs)).transform_keys do |key|
+    item_filter_params.slice(*ItemFiltering.sort_keys(assoc_name, assoc_attrs)).transform_keys do |key|
       next $1.to_sym if key.to_s =~ key_pattern
       key
     end.to_unsafe_h.map do |keyval|

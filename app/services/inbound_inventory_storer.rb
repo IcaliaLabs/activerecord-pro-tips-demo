@@ -48,10 +48,6 @@ class InboundInventoryStorer
     Arel::Nodes::NamedFunction.new 'generate_series', [1, logs_table[:quantity]]
   end
 
-  def arel_count(*args)
-    Arel::Nodes::NamedFunction.new 'COUNT', args
-  end
-
   # Returns an Arel object with an interesting projection that multiplies each
   # inbound_log by it's quantity, resulting in a number of rows directly
   # mappable/insertable to Item rows:
@@ -77,11 +73,11 @@ class InboundInventoryStorer
       .group(logs_table[:shelf_id])
       .project \
         logs_table[:shelf_id],
-        arel_count(items_table[Arel.star]).as('"item_count"')
+        items_table[Arel.star].count.as('"item_count"')
   end
 
   # Crazy stuff:
-  def inbounding_items_rank_in_shelf
+  def self.inbounding_items_rank_in_shelf
     shelves_item_counts = Arel::Table.new :shelves_item_counts
     inbound_logs_as_line_items = Arel::Table.new :inbound_logs_as_line_items
 
@@ -103,6 +99,8 @@ class InboundInventoryStorer
     # Return the ranking_order + "shelves_item_counts"."item_count" node:
     Arel::Nodes::Addition.new ranking_order, shelves_item_counts[:item_count]
   end
+
+  delegate :inbounding_items_rank_in_shelf, to: :class
 
   def stored_items_projection
     inbound_logs_as_line_items = inbound_logs_as_line_items_projection

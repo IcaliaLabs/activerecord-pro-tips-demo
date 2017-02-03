@@ -2,7 +2,9 @@
 # Subscribes to the ActionController notifications, and captures the 'Completed 200 OK' log event
 # and redirects it to the user via ActionCable
 class ActionControllerLogSubscriber < ActiveSupport::LogSubscriber
-  def process_action(event)
+  delegate :process_action, to: :class
+
+  def self.process_action(event)
     payload   = event.payload
     additions = ActionController::Base.log_process_action(payload)
 

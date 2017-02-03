@@ -1,13 +1,15 @@
 #= RandomInventoryGenerator
 # Object that is capable of generating random shelves and inventory
 class RandomInventoryGenerator
-  def generate_shelves(quantity = nil)
+  delegate :generate_shelves, :generate_inbound_order, to: :class
+
+  def self.generate_shelves(quantity = nil)
     # If no quantity was given, specify a random quantity between 5 and 20:
     quantity ||= SecureRandom.random_number(16) + 5
     quantity.times.each { Shelf.create name: FFaker::DizzleIpsum.characters(5) }
   end
 
-  def generate_inbound_order(variety_count: nil, quantity_by_product: nil, complete_order: true)
+  def self.generate_inbound_order(variety_count: nil, quantity_by_product: nil, complete_order: true)
     generate_shelves unless Shelf.any?
     RandomCatalogGenerator.new.generate_products unless Product.any?
 
