@@ -50,13 +50,11 @@ module ItemFiltering
   define_method(:sort_by_category?) { sort_by? category_param_def }
 
   def category_scope
-    Category.where ItemFiltering.params_filter_conditions(category_param_def)
+    Category.where ItemFiltering.params_filter_conditions(item_filter_params, category_param_def)
   end
 
   def filter_and_sort_by_category(scope)
-    return scope unless filter_by_category? || sort_by_category?
-    scope = filter_by_category scope.joins(:category)
-    sort_by_category scope
+    filter_and_sort_scope_by Category, scope
   end
 
   define_method(:product_param_def) { AssociationParameterDefinition.new Product, :id, :name }
@@ -64,13 +62,11 @@ module ItemFiltering
   define_method(:sort_by_product?) { sort_by? product_param_def }
 
   def product_scope
-    Product.where ItemFiltering.params_filter_conditions(product_param_def)
+    Product.where ItemFiltering.params_filter_conditions(item_filter_params, product_param_def)
   end
 
   def filter_and_sort_by_product(scope)
-    return scope unless filter_by_product?
-    scope = filter_by_product scope.joins(:product)
-    sort_by_product scope
+    filter_and_sort_scope_by Product, scope
   end
 
   define_method(:shelf_param_def) { AssociationParameterDefinition.new Shelf, :id, :name }
@@ -78,13 +74,11 @@ module ItemFiltering
   define_method(:sort_by_shelf?) { sort_by? shelf_param_def }
 
   def shelf_scope
-    Shelf.where ItemFiltering.params_filter_conditions(shelf_param_def)
+    Shelf.where ItemFiltering.params_filter_conditions(item_filter_params, shelf_param_def)
   end
 
   def filter_and_sort_by_shelf(scope)
-    return scope unless filter_by_shelf? || sort_by_shelf?
-    scope = filter_by_shelf scope.joins(:shelf)
-    sort_by_shelf scope
+    filter_and_sort_scope_by Shelf, scope
   end
 
   def self.reduce_condition_params(given_params, key_pattern, param_keys)
@@ -103,7 +97,7 @@ module ItemFiltering
 
   def sort_by_category(scope)
     return scope unless sort_by_category?
-    scope.order params_sort_conditions(category_param_def)
+    scope.order ItemFiltering.params_sort_conditions(item_filter_params, category_param_def)
   end
 
   def filter_by_product(scope)
@@ -113,7 +107,7 @@ module ItemFiltering
 
   def sort_by_product(scope)
     return scope unless sort_by_product?
-    scope.order params_sort_conditions(product_param_def)
+    scope.order ItemFiltering.params_sort_conditions(item_filter_params, product_param_def)
   end
 
   def filter_by_shelf(scope)
@@ -123,7 +117,7 @@ module ItemFiltering
 
   def sort_by_shelf(scope)
     return scope unless sort_by_shelf?
-    scope.order params_sort_conditions(shelf_param_def)
+    scope.order ItemFiltering.params_sort_conditions(item_filter_params, shelf_param_def)
   end
 
   def sort_by?(param_def)
@@ -136,15 +130,42 @@ module ItemFiltering
     (params.keys & param_def.filter_param_keys).any?
   end
 
-  def self.params_filter_conditions(param_def)
-    ItemFiltering.reduce_condition_params item_filter_params,
+  def filter_and_sort_scope_by(klass, scope)
+    association_name = klass.name.underscore.to_sym
+    reducing_methods = ItemFiltering.reducing_methods_for klass
+    return scope unless reducing_methods_apply? reducing_methods
+    scope = scope.joins(association_name) unless scope.klass == klass
+
+    # Apply the filtering and sorting methods to the scope:
+    reduce_scope_by reducing_methods, scope
+  end
+
+  def reducing_methods_apply?(reducing_methods)
+    reducing_methods.map { |method| send("#{method}?".to_sym) }.reduce(&:|)
+  end
+
+  def self.reducing_methods_for(klass)
+    association_name = klass.name.underscore.to_sym
+    %w(filter_by sort_by).map do |method_prefix|
+      "#{method_prefix}_#{association_name}".to_sym
+    end
+  end
+
+  def reduce_scope_by(reducing_methods, scope_to_reduce)
+    reducing_methods.reduce(scope_to_reduce) do |reduced_scope, reducing_method|
+      send reducing_method, reduced_scope
+    end
+  end
+
+  def self.params_filter_conditions(given_params, param_def)
+    ItemFiltering.reduce_condition_params given_params,
                                           param_def.filter_key_pattern,
                                           param_def.filter_param_keys
   end
 
-  def self.params_sort_conditions(param_def)
+  def self.params_sort_conditions(given_params, param_def)
     ItemFiltering.reduce_condition_params(
-      item_filter_params,
+      given_params,
       param_def.sort_key_pattern,
       param_def.sort_param_keys
     ).map do |keyval|
