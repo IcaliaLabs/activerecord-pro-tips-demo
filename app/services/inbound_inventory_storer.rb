@@ -10,6 +10,12 @@ class InboundInventoryStorer
     @order = given_inbound_order
   end
 
+  def store_order_items
+    store_order_items!
+  rescue
+    false
+  end
+
   def store_order_items!
     @timestamp = Time.now
 

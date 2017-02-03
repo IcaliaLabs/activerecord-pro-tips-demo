@@ -28,6 +28,12 @@ class InboundOrder < ApplicationRecord
     current_state == 'completed'
   end
 
+  def store_items
+    store_items!
+  rescue
+    false
+  end
+
   def store_items!
     InboundInventoryStorer.new(self).store_order_items!
   end
