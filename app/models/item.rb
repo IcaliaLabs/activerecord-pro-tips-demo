@@ -8,4 +8,6 @@ class Item < ApplicationRecord
 
   # I use `define_method` for short, one-liner methods :) Sue me if you don't like it.
   define_method(:available?) { shelf.any? }
+
+  scope :available, -> { where currently_available: true }
 end

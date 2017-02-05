@@ -1,3 +1,6 @@
+# = InboundInventoryStorer
+# Service that stores the inventory from an InboundOrder. Called during the order transition to
+# a 'completed' state.
 class InboundInventoryStorer
   attr_reader :order, :timestamp
 
@@ -5,6 +8,12 @@ class InboundInventoryStorer
     raise 'Given order is not yet received' if given_inbound_order.pending?
     raise 'Given order is already completed' if given_inbound_order.completed?
     @order = given_inbound_order
+  end
+
+  def store_order_items
+    store_order_items!
+  rescue
+    false
   end
 
   def store_order_items!
@@ -45,10 +54,6 @@ class InboundInventoryStorer
     Arel::Nodes::NamedFunction.new 'generate_series', [1, logs_table[:quantity]]
   end
 
-  def arel_count(*args)
-    Arel::Nodes::NamedFunction.new 'COUNT', args
-  end
-
   # Returns an Arel object with an interesting projection that multiplies each
   # inbound_log by it's quantity, resulting in a number of rows directly
   # mappable/insertable to Item rows:
@@ -67,30 +72,18 @@ class InboundInventoryStorer
   # Returns an Arel object with an projection of shelf ids and it's respective:
   # item count:
   def shelves_item_counts_projection
-    join_condition = logs_table[:shelf_id].eq items_table[:shelf_id]
+    logs_shelf_id = logs_table[:shelf_id]
+    join_condition = logs_shelf_id.eq items_table[:shelf_id]
     order_logs
       .join(items_table, Arel::Nodes::OuterJoin)
       .on(join_condition)
-      .group(logs_table[:shelf_id])
-      .project \
-        logs_table[:shelf_id],
-        arel_count(items_table[Arel.star]).as('"item_count"')
+      .group(logs_shelf_id)
+      .project logs_shelf_id, items_table[Arel.star].count.as('"item_count"')
   end
 
   # Crazy stuff:
-  def inbounding_items_rank_in_shelf
+  def self.inbounding_items_rank_in_shelf
     shelves_item_counts = Arel::Table.new :shelves_item_counts
-    inbound_logs_as_line_items = Arel::Table.new :inbound_logs_as_line_items
-
-    # Generate the '(
-    #   PARTITION BY "inbound_logs_as_line_items"."shelf_id"
-    #   ORDER BY "inbound_logs_as_line_items"."inbound_log_id",
-    #            "inbound_logs_as_line_items"."log_item_sort_order"
-    # )' part:
-    partitioned_row_numbers = Arel::Nodes::Window.new
-    partitioned_row_numbers.partition inbound_logs_as_line_items[:shelf_id]
-    partitioned_row_numbers.order inbound_logs_as_line_items[:inbound_log_id],
-                                  inbound_logs_as_line_items[:log_item_sort_order]
 
     # Generate the 'row_number() OVER (PARTITION...)' part:
     ranking_order = Arel::Nodes::Over.new \
@@ -101,22 +94,39 @@ class InboundInventoryStorer
     Arel::Nodes::Addition.new ranking_order, shelves_item_counts[:item_count]
   end
 
+  delegate :inbounding_items_rank_in_shelf, :partitioned_row_numbers, to: :class
+
+  # Generate the '(
+  #   PARTITION BY "inbound_logs_as_line_items"."shelf_id"
+  #   ORDER BY "inbound_logs_as_line_items"."inbound_log_id",
+  #            "inbound_logs_as_line_items"."log_item_sort_order"
+  # )' part:
+  def self.partitioned_row_numbers
+    inbound_logs_as_line_items = Arel::Table.new :inbound_logs_as_line_items
+    sql_window = Arel::Nodes::Window.new
+    sql_window.partition inbound_logs_as_line_items[:shelf_id]
+    sql_window.order inbound_logs_as_line_items[:inbound_log_id],
+                     inbound_logs_as_line_items[:log_item_sort_order]
+    sql_window
+  end
+
   def stored_items_projection
     inbound_logs_as_line_items = inbound_logs_as_line_items_projection
       .as '"inbound_logs_as_line_items"'
 
     shelves_item_counts = shelves_item_counts_projection.as '"shelves_item_counts"'
-
+    line_item_inbound_log_id = inbound_logs_as_line_items[:inbound_log_id]
+    line_item_shelf_id = inbound_logs_as_line_items[:shelf_id]
     order_logs
       .join(inbound_logs_as_line_items)
-      .on(logs_table[:id].eq(inbound_logs_as_line_items[:inbound_log_id]))
+      .on(logs_table[:id].eq(line_item_inbound_log_id))
       .join(shelves_item_counts)
-      .on(inbound_logs_as_line_items[:shelf_id].eq(shelves_item_counts[:shelf_id]))
+      .on(line_item_shelf_id.eq(shelves_item_counts[:shelf_id]))
       .project \
-        inbound_logs_as_line_items[:inbound_log_id],
+        line_item_inbound_log_id,
         inbound_logs_as_line_items[:product_id],
         inbound_logs_as_line_items[:properties],
-        inbound_logs_as_line_items[:shelf_id],
+        line_item_shelf_id,
         inbounding_items_rank_in_shelf.as('"shelf_rank"'),
         timestamp_as_projection('created_at'),
         timestamp_as_projection('updated_at')

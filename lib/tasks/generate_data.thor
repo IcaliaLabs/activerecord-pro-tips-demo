@@ -26,8 +26,7 @@ class GenerateData < Thor
 
     params = {
       variety_count: ask('How many different products you wish to add to the order?').to_i,
-      quantity_by_product: ask('How many items do you want per product?').to_i,
-      complete_order: false # We'll let the user decide when to proceed with the big operation...
+      quantity_by_product: ask('How many items do you want per product?').to_i
     }
     inbound_order = inventory_generator.generate_inbound_order params
 
