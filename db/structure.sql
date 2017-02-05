@@ -354,6 +354,19 @@ ALTER SEQUENCE items_id_seq OWNED BY items.id;
 
 
 --
+-- Name: product_stats; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE product_stats (
+    product_id integer NOT NULL,
+    rating integer DEFAULT 0 NOT NULL,
+    sell_count integer DEFAULT 0 NOT NULL,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+
+--
 -- Name: products; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -675,6 +688,27 @@ CREATE INDEX "IX_product_name" ON products USING btree (name);
 
 
 --
+-- Name: IX_product_rating; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_product_rating" ON product_stats USING btree (rating);
+
+
+--
+-- Name: IX_product_sell_count; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_product_sell_count" ON product_stats USING btree (sell_count);
+
+
+--
+-- Name: IX_product_stat; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IX_product_stat" ON product_stats USING btree (product_id);
+
+
+--
 -- Name: IX_sold_item; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -773,6 +807,14 @@ ALTER TABLE ONLY products
 
 
 --
+-- Name: product_stats FK_product_stat; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY product_stats
+    ADD CONSTRAINT "FK_product_stat" FOREIGN KEY (product_id) REFERENCES products(id);
+
+
+--
 -- Name: inbound_order_transitions FK_transition_inbound_order; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -788,6 +830,7 @@ SET search_path TO partitioning,public;
 
 INSERT INTO schema_migrations (version) VALUES
 ('20170131173652'),
-('20170131173739');
+('20170131173739'),
+('20170204222535');
 
 
